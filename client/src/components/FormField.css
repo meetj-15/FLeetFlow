@@ -1,0 +1,68 @@
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.form-label {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.form-label .required {
+  color: var(--danger-color);
+  margin-left: 0.25rem;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  transition: all 0.2s;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-field input.error,
+.form-field select.error,
+.form-field textarea.error {
+  border-color: var(--danger-color);
+}
+
+.form-field input.error:focus,
+.form-field select.error:focus,
+.form-field textarea.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-field input:disabled,
+.form-field select:disabled,
+.form-field textarea:disabled {
+  background-color: var(--bg-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-error {
+  color: var(--danger-color);
+  font-size: 0.75rem;
+  margin-top: -0.25rem;
+}
+
+.form-field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
