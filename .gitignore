@@ -22,7 +22,9 @@ npm-debug.log*
 .idea/
 *.swp
 *.swo
-*~
+package-lock.json
+package.json
+
 
 # OS
 .DS_Store
