@@ -9,18 +9,19 @@ import {
 } from './controller.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate, asyncHandler } from '../../middleware/validator.js';
-import { VEHICLE_WRITE_ROLES } from '../../utils/constants.js';
+import { VEHICLE_READ_ROLES, VEHICLE_WRITE_ROLES } from '../../utils/constants.js';
 
 const router = express.Router();
 
 /**
  * @route   GET /api/vehicles
  * @desc    Get all vehicles with optional filtering
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager)
  */
 router.get(
   '/',
   authenticate,
+  authorize(...VEHICLE_READ_ROLES),
   [
     validateQuery('status').optional().trim(),
     validateQuery('region').optional().trim(),
@@ -33,11 +34,12 @@ router.get(
 /**
  * @route   GET /api/vehicles/:id
  * @desc    Get vehicle by ID
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager)
  */
 router.get(
   '/:id',
   authenticate,
+  authorize(...VEHICLE_READ_ROLES),
   asyncHandler(getVehicleById)
 );
 

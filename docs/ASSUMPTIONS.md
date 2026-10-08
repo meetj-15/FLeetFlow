@@ -1,0 +1,358 @@
+# FleetFlow Implementation Assumptions
+
+This document records implementation decisions made where the source requirements (SRS, Software Design Document, UML diagrams) were underspecified or left room for interpretation.
+
+## Document Purpose
+
+The Software Requirements Specification and Software Design Document provide comprehensive requirements but cannot specify every implementation detail. This document tracks choices made by the development team to fill those gaps, ensuring:
+
+1. **Transparency**: All stakeholders understand what was implemented beyond explicit requirements
+2. **Traceability**: Future developers can understand why certain decisions were made
+3. **Maintainability**: Changes can be made with full context of original intent
+
+---
+
+## Authentication & Authorization
+
+### Password Requirements
+**Assumption**: Minimum password length is 8 characters.
+
+**Rationale**: The SRS specifies "secure password hashing with bcrypt" but does not define password complexity rules. An 8-character minimum provides basic security without being overly restrictive for an academic project.
+
+**Location**: 
+- Backend: `server/src/modules/auth/controller.js`
+- Frontend: `client/src/schemas/auth.js`
+
+### JWT Token Expiration
+**Assumption**: JWT tokens expire after 24 hours.
+
+**Rationale**: The design document specifies JWT authentication but not expiration policy. 24 hours balances security (tokens don't persist indefinitely) with usability (users don't need to re-authenticate frequently during development/testing).
+
+**Location**: `server/.env.example` - `JWT_EXPIRES_IN=24h`
+
+### Role Assignment on Registration
+**Assumption**: Users can select their own role during registration.
+
+**Rationale**: The SRS defines four operational roles but doesn't specify how roles are assigned. For this academic prototype, self-selection simplifies testing and demonstration. A production system would require admin-controlled role assignment.
+
+**Location**: `server/src/modules/auth/controller.js`
+
+---
+
+## Business Rules
+
+### Phone Number Validation
+**Assumption**: Phone numbers must be 10-20 characters and contain only digits, spaces, hyphens, plus signs, and parentheses.
+
+**Rationale**: The driver entity requires a phone field but the SRS doesn't specify format constraints. This regex pattern accepts international formats while preventing obviously invalid input.
+
+**Pattern**: `/^[\d\s\-\+\(\)]*$/`
+
+**Location**: `client/src/schemas/driver.js`
+
+### Driver License Expiry Validation on Creation
+**Assumption**: When creating a driver profile, license expiry must be in the future.
+
+**Rationale**: The SRS states "expired licenses cannot be dispatched" but doesn't specify whether drivers with expired licenses can be created. We enforce future dates on creation to prevent invalid data entry, while still allowing historical records to exist.
+
+**Location**: 
+- `client/src/schemas/driver.js`
+- `server/src/modules/driver/controller.js`
+
+### Default Safety Score
+**Assumption**: New drivers default to safety score of 100.
+
+**Rationale**: The safety score field (0-100) is required but no initial value is specified. Starting at 100 (perfect score) assumes drivers are qualified until proven otherwise.
+
+**Location**: Database schema default, backend validation
+
+### Vehicle Deletion Policy
+**Assumption**: Vehicles cannot be physically deleted if they have active trips or maintenance. The `DELETE /api/vehicles/:id` endpoint checks for active usage before allowing deletion.
+
+**Rationale**: The design document says "retire/delete" but doesn't fully specify deletion semantics. We prevent deletion of vehicles with operational history to preserve data integrity, while the `Retired` status provides a soft-delete mechanism.
+
+**Location**: `server/src/modules/vehicle/controller.js`
+
+### Maintenance Cost Required
+**Assumption**: Maintenance cost is required when opening maintenance (even if $0).
+
+**Rationale**: The maintenance entity includes a cost field, and opening maintenance creates a corresponding expense. Requiring cost up-front (even if estimated) ensures expense records are complete.
+
+**Location**: `server/src/modules/maintenance/controller.js`
+
+---
+
+## Financial Calculations
+
+### Net Profit Definition
+**Assumption**: Net Profit = Completed Trip Revenue - Total Expenses
+
+**Rationale**: The dashboard requires "net profit" but the exact formula isn't specified. This simple calculation uses completed trip revenue (not draft/dispatched) minus all recorded expenses.
+
+**Location**: `server/src/modules/dashboard/controller.js`
+
+### Vehicle ROI Calculation
+**Assumption**: ROI % = (Net Vehicle Profit / Acquisition Cost) × 100
+
+Where:
+- Net Vehicle Profit = Vehicle's completed trip revenue - Vehicle's associated expenses
+
+**Rationale**: The dashboard requires "per-vehicle ROI" but the SRS doesn't define the formula. This calculation compares profit generated by a vehicle to its initial investment, providing a simple profitability metric.
+
+**Location**: `server/src/modules/dashboard/controller.js`
+
+### Expense Attribution
+**Assumption**: Fuel and maintenance entries automatically create corresponding expenses with matching amounts.
+
+**Rationale**: The design explicitly requires this for transaction safety. The assumption is that fuel cost = fuel expense amount, and maintenance cost = maintenance expense amount, with no markup or additional fees.
+
+**Location**: 
+- `server/src/modules/fuel/controller.js`
+- `server/src/modules/maintenance/controller.js`
+
+---
+
+## State Management
+
+### Initial Vehicle Status
+**Assumption**: Newly created vehicles start with status `Available`.
+
+**Rationale**: The SRS defines vehicle states but not initial state. New vehicles should be ready for use unless explicitly marked otherwise.
+
+**Location**: Database schema default
+
+### Initial Driver Status
+**Assumption**: Newly created drivers start with status `Available`.
+
+**Rationale**: Same reasoning as vehicles - new drivers should be ready for assignment.
+
+**Location**: Database schema default
+
+### Initial Trip Status
+**Assumption**: Newly created trips start with status `Draft`.
+
+**Rationale**: The design document shows Draft → Dispatched transition. New trips must start in Draft to allow validation before dispatch.
+
+**Location**: Database schema default
+
+### Completing Maintenance for Retired Vehicles
+**Assumption**: When closing maintenance on a `Retired` vehicle, the vehicle status remains `Retired` (does not return to `Available`).
+
+**Rationale**: The business rule states "vehicle returns to Available unless Retired." Retirement is permanent, so maintenance completion shouldn't reverse it.
+
+**Location**: `server/src/modules/maintenance/controller.js`
+
+---
+
+## Transaction & Concurrency
+
+### Dispatch Transaction Isolation
+**Assumption**: Dispatch operations use `SELECT ... FOR UPDATE` row-level locking within a PostgreSQL transaction.
+
+**Rationale**: The sequence diagram explicitly requires transaction safety with row locking. PostgreSQL's `FOR UPDATE` prevents concurrent dispatch of the same resources.
+
+**Location**: `server/src/modules/trip/controller.js` - `dispatchTrip` function
+
+### Transaction Rollback on Any Error
+**Assumption**: All multi-step transactions (dispatch, complete, cancel, open maintenance, create fuel) rollback completely on any error.
+
+**Rationale**: The design document requires "rollback on failure." This ensures either all state changes succeed together, or none do.
+
+**Location**: All transaction-based controller functions
+
+---
+
+## Data Types & Precision
+
+### Decimal Precision for Money
+**Assumption**: All monetary values use `DECIMAL(12, 2)` - up to $9,999,999,999.99
+
+**Rationale**: Standard financial precision. 2 decimal places for cents/paise, 12 total digits allows large acquisition costs and revenue totals.
+
+**Location**: Database schema
+
+### Decimal Precision for Weights and Distances
+**Assumption**: Weights and distances use `DECIMAL(10, 2)` - up to 99,999,999.99
+
+**Rationale**: Sufficient precision for cargo weights (kg or lbs) and distances (km or miles) without unnecessary storage.
+
+**Location**: Database schema
+
+### UUID Primary Keys
+**Assumption**: All entities use UUID v4 as primary keys.
+
+**Rationale**: The design document explicitly specifies UUIDs. They provide globally unique identifiers without coordination, useful for distributed systems or future scaling.
+
+**Location**: Database schema - `uuid_generate_v4()`
+
+---
+
+## Date & Time Handling
+
+### Timestamp vs Date Fields
+**Assumption**: 
+- Timestamps: `dispatch_time`, `completed_time`, `cancelled_at`, `created_at`, `updated_at`
+- Dates: `license_expiry`, `start_date`, `end_date`, `fuel_date`, `expense_date`, `scheduled_date`
+
+**Rationale**: Events (dispatch, completion) need precise timing for audit trails. Properties (license expiry, scheduled dates) need only day precision. This matches typical business needs.
+
+**Location**: Database schema
+
+### Scheduled Date Optional
+**Assumption**: Trip `scheduled_date` is optional.
+
+**Rationale**: The class diagram shows this field but the SRS doesn't require it. Making it optional allows both immediate dispatch and pre-scheduled trips.
+
+**Location**: Database schema, API validation
+
+---
+
+## API Design
+
+### Response Format Consistency
+**Assumption**: All API responses follow the format:
+```json
+{
+  "success": true|false,
+  "data": {...} | null,
+  "error": { "code": "...", "message": "..." } | null
+}
+```
+
+**Rationale**: The design document specifies this pattern. Consistent structure simplifies client-side error handling and success detection.
+
+**Location**: All controller functions
+
+### Error Code Naming
+**Assumption**: Error codes use UPPER_SNAKE_CASE (e.g., `VEHICLE_UNAVAILABLE`, `LICENSE_EXPIRED`).
+
+**Rationale**: The design document provides example codes. This convention makes codes easy to recognize and distinguish from messages.
+
+**Location**: 
+- `server/src/utils/constants.js`
+- All error responses
+
+### List Endpoints Return Full Results
+**Assumption**: GET list endpoints return all matching records without pagination.
+
+**Rationale**: The SRS doesn't specify pagination requirements. For this academic project with expected small datasets, full results simplify implementation. Pagination can be added later if needed.
+
+**Location**: All list/GET endpoints
+
+---
+
+## Frontend Implementation
+
+### Navigation by Role
+**Assumption**: Each role sees only relevant navigation items:
+- **Fleet Manager**: All modules
+- **Driver**: Dashboard, Trips, Fuel
+- **Safety Officer**: Dashboard, Drivers, Maintenance
+- **Financial Analyst**: Dashboard, Expenses
+
+**Rationale**: The design document requires "role-focused navigation." These mappings align with the functional access table in the SRS while hiding irrelevant features.
+
+**Location**: `client/src/utils/constants.js` - `getNavigationByRole`
+
+### Form Validation Timing
+**Assumption**: Client-side validation occurs on blur (field exit) and on submit.
+
+**Rationale**: The design requires "clear inline validation" but doesn't specify timing. Blur validation provides immediate feedback, submit validation catches any remaining errors.
+
+**Location**: Form components using Zod schemas
+
+### Empty State Messages
+**Assumption**: Data tables show "No records found" when empty, with a suggestion to create a new record where applicable.
+
+**Rationale**: The design requires "clear empty states." Helpful messages improve usability for new users or empty databases.
+
+**Location**: `client/src/components/DataTable.jsx`
+
+### Loading State Display
+**Assumption**: API calls show a loading spinner until the response arrives.
+
+**Rationale**: The design requires "clear loading states." Visual feedback prevents users from thinking the app froze.
+
+**Location**: `client/src/components/PageLoader.jsx`, page components
+
+---
+
+## Testing & Development
+
+### Test Data (Seed File)
+**Assumption**: Seed data includes 4 users (one per role), several vehicles, drivers, and sample trips.
+
+**Rationale**: The README mentions seed data but the SRS doesn't specify contents. Representative data for each role enables comprehensive testing.
+
+**Location**: `database/seed.sql`
+
+### Development CORS Policy
+**Assumption**: Development mode allows CORS from `http://localhost:5173` (Vite default).
+
+**Rationale**: Separate frontend/backend servers require CORS during development. Production would use same-origin or specific allowed origins.
+
+**Location**: `server/src/app.js`
+
+---
+
+## Production vs Development
+
+### Environment-Specific Behavior
+**Assumption**: Production mode (NODE_ENV=production) should:
+- Hide detailed error stacks from API responses
+- Use HTTPS
+- Implement rate limiting (not yet implemented)
+- Require stronger JWT secrets
+
+**Rationale**: The design document specifies "production hardening" items. These are standard security practices.
+
+**Location**: Documented in README, partial implementation in code
+
+---
+
+## Unresolved Ambiguities
+
+These items remain ambiguous or contradictory in the source documents:
+
+### 1. ADMIN Role in Class Diagram
+**Issue**: The Class Diagram shows `ADMIN` as a role value, but the SRS defines only four operational roles.
+
+**Current Implementation**: ADMIN is NOT implemented as a standard role. The four SRS roles are implemented.
+
+**Reason**: The SRS is the authoritative source for functional requirements. The class diagram discrepancy is documented but not implemented.
+
+### 2. INACTIVE Driver Status
+**Issue**: The Class Diagram shows `INACTIVE` driver status, but the SRS defines only Available, On Trip, and Suspended.
+
+**Current Implementation**: INACTIVE is NOT implemented as a driver status.
+
+**Reason**: Same as above - SRS takes precedence. Suspended serves as the "not eligible for dispatch" state.
+
+### 3. Exact Trip Cancellation Permission Rules
+**Issue**: The design says "Fleet Manager / Driver" can cancel, but doesn't specify whether a driver can cancel another driver's trip.
+
+**Current Implementation**: Any authenticated user with Driver or Fleet Manager role can cancel any trip via the API. Frontend shows cancel button based on role, not trip ownership.
+
+**Future Consideration**: Could add trip ownership checks if requirement emerges.
+
+---
+
+## Change Log
+
+| Date | Section | Change | Reason |
+|------|---------|--------|--------|
+| 2024-01-20 | Initial | Document created | Systematic implementation review |
+
+---
+
+## Maintenance
+
+This document should be updated whenever:
+1. An ambiguous requirement is encountered and a decision is made
+2. A feature is implemented that goes beyond explicit SRS/design requirements
+3. A design pattern is chosen where multiple valid options existed
+4. Source documents are updated or clarified
+
+**Document Owner**: Development Team  
+**Last Updated**: 2024-01-20  
+**Version**: 1.0

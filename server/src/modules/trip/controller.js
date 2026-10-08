@@ -1,14 +1,18 @@
 import { query, getClient } from '../../config/db.js';
 import { successResponse, createdResponse } from '../../utils/response.js';
-import { notFoundError, businessRuleError, ErrorCodes } from '../../utils/errors.js';
-import { TripStatus, VehicleStatus, DriverStatus } from '../../utils/constants.js';
+import { notFoundError, businessRuleError, ErrorCodes, forbiddenError } from '../../utils/errors.js';
+import { TripStatus, VehicleStatus, DriverStatus, UserRoles } from '../../utils/constants.js';
+import { isDispatchEligible } from '../driver/driverValidation.js';
 
 /**
  * Get all trips with optional filtering
+ * Implements data isolation: Drivers can only see their own trips
  */
 export const getAllTrips = async (req, res, next) => {
   try {
     const { status, vehicle_id, driver_id } = req.query;
+    const userRole = req.user.role;
+    const userId = req.user.id;
 
     let queryText = `
       SELECT 
@@ -25,6 +29,24 @@ export const getAllTrips = async (req, res, next) => {
     `;
     const params = [];
     let paramCount = 0;
+
+    // Data isolation: Drivers can only see their own trips
+    if (userRole === UserRoles.DRIVER) {
+      // Get driver_id from user_id
+      const driverResult = await query(
+        'SELECT id FROM drivers WHERE user_id = $1',
+        [userId]
+      );
+      
+      if (driverResult.rows.length === 0) {
+        throw notFoundError('Driver profile not found for this user');
+      }
+      
+      const userDriverId = driverResult.rows[0].id;
+      paramCount++;
+      queryText += ` AND t.driver_id = $${paramCount}`;
+      params.push(userDriverId);
+    }
 
     if (status) {
       paramCount++;
@@ -56,10 +78,13 @@ export const getAllTrips = async (req, res, next) => {
 
 /**
  * Get trip by ID
+ * Implements data isolation: Drivers can only view their own trips
  */
 export const getTripById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const userRole = req.user.role;
+    const userId = req.user.id;
 
     const result = await query(`
       SELECT 
@@ -68,6 +93,7 @@ export const getTripById = async (req, res, next) => {
         v.vehicle_name,
         v.vehicle_type,
         d.license_no as driver_license,
+        d.user_id as driver_user_id,
         u.name as driver_name
       FROM trips t
       LEFT JOIN vehicles v ON t.vehicle_id = v.id
@@ -80,7 +106,14 @@ export const getTripById = async (req, res, next) => {
       throw notFoundError('Trip');
     }
 
-    successResponse(res, { trip: result.rows[0] });
+    const trip = result.rows[0];
+
+    // Data isolation: Drivers can only view their own trips
+    if (userRole === UserRoles.DRIVER && trip.driver_user_id !== userId) {
+      throw forbiddenError('You can only view your own trips');
+    }
+
+    successResponse(res, { trip });
   } catch (error) {
     next(error);
   }
@@ -88,6 +121,7 @@ export const getTripById = async (req, res, next) => {
 
 /**
  * Create new trip
+ * Implements data isolation: Drivers can only create trips for themselves
  */
 export const createTrip = async (req, res, next) => {
   try {
@@ -101,6 +135,29 @@ export const createTrip = async (req, res, next) => {
       revenue = 0,
       scheduled_date,
     } = req.body;
+
+    const userRole = req.user.role;
+    const userId = req.user.id;
+
+    // Data isolation: Drivers can only create trips for themselves
+    if (userRole === UserRoles.DRIVER) {
+      // Get driver's profile
+      const driverResult = await query(
+        'SELECT id FROM drivers WHERE user_id = $1',
+        [userId]
+      );
+      
+      if (driverResult.rows.length === 0) {
+        throw notFoundError('Driver profile not found for this user');
+      }
+      
+      const userDriverId = driverResult.rows[0].id;
+      
+      // Verify driver is trying to create trip for themselves
+      if (driver_id !== userDriverId) {
+        throw forbiddenError('Drivers can only create trips for themselves');
+      }
+    }
 
     // Validate cargo capacity
     const vehicleResult = await query(
@@ -229,24 +286,10 @@ export const dispatchTrip = async (req, res, next) => {
 
     const driver = driverResult.rows[0];
 
-    // Validate driver availability (catches On Trip and Suspended)
-    if (driver.status !== DriverStatus.AVAILABLE) {
-      const reason =
-        driver.status === DriverStatus.SUSPENDED ? 'Driver is suspended and cannot be dispatched' :
-        driver.status === DriverStatus.ON_TRIP   ? 'Driver is already on another trip' :
-        `Driver is not available (status: ${driver.status})`;
-      throw businessRuleError(ErrorCodes.DRIVER_UNAVAILABLE, reason);
-    }
-
-    // Validate license expiry
-    const today = new Date();
-    const licenseExpiry = new Date(driver.license_expiry);
-
-    if (licenseExpiry <= today) {
-      throw businessRuleError(
-        ErrorCodes.LICENSE_EXPIRED,
-        `Driver's license expired on ${driver.license_expiry}`
-      );
+    // Validate driver dispatch eligibility (license expiry + status)
+    const eligibility = isDispatchEligible(driver);
+    if (!eligibility.eligible) {
+      throw businessRuleError(eligibility.code, eligibility.message);
     }
 
     // Update trip to Dispatched

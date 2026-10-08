@@ -9,18 +9,19 @@ import {
 } from './controller.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate, asyncHandler } from '../../middleware/validator.js';
-import { DRIVER_WRITE_ROLES, SAFETY_SCORE_MIN, SAFETY_SCORE_MAX } from '../../utils/constants.js';
+import { DRIVER_READ_ROLES, DRIVER_WRITE_ROLES, SAFETY_SCORE_MIN, SAFETY_SCORE_MAX } from '../../utils/constants.js';
 
 const router = express.Router();
 
 /**
  * @route   GET /api/drivers
  * @desc    Get all drivers with optional filtering
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Safety Officer)
  */
 router.get(
   '/',
   authenticate,
+  authorize(...DRIVER_READ_ROLES),
   [
     validateQuery('status').optional().trim(),
     validateQuery('search').optional().trim(),
@@ -31,22 +32,24 @@ router.get(
 /**
  * @route   GET /api/drivers/available
  * @desc    Get available drivers (valid license, not on trip, not suspended)
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Safety Officer)
  */
 router.get(
   '/available',
   authenticate,
+  authorize(...DRIVER_READ_ROLES),
   asyncHandler(getAvailableDrivers)
 );
 
 /**
  * @route   GET /api/drivers/:id
  * @desc    Get driver by ID
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Safety Officer)
  */
 router.get(
   '/:id',
   authenticate,
+  authorize(...DRIVER_READ_ROLES),
   asyncHandler(getDriverById)
 );
 
@@ -80,14 +83,7 @@ router.post(
       .notEmpty()
       .withMessage('License expiry date is required')
       .isISO8601()
-      .withMessage('License expiry must be a valid date')
-      .custom((value) => {
-        const expiryDate = new Date(value);
-        if (expiryDate <= new Date()) {
-          throw new Error('License expiry date must be in the future');
-        }
-        return true;
-      }),
+      .withMessage('License expiry must be a valid date'),
     body('phone')
       .optional()
       .trim()

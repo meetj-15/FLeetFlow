@@ -1,103 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
-} from 'recharts';
-import { getDashboardMetrics } from '../api/dashboard';
-import KpiCard from '../components/KpiCard';
-import StatusBadge from '../components/StatusBadge';
+import React from 'react';
+import { useAuth } from '../context/AuthContext';
+import { UserRoles } from '../utils/constants';
+import FleetManagerDashboard from './dashboards/FleetManagerDashboard';
+import DriverDashboard from './dashboards/DriverDashboard';
+import SafetyOfficerDashboard from './dashboards/SafetyOfficerDashboard';
+import FinancialAnalystDashboard from './dashboards/FinancialAnalystDashboard';
 import './Dashboard.css';
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'];
-
-const fmt = (n) =>
-  n === undefined || n === null
-    ? '—'
-    : parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 const Dashboard = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { user } = useAuth();
 
-  const load = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const result = await getDashboardMetrics();
-      setData(result);
-    } catch (err) {
-      setError('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  if (loading) {
+  if (!user) {
     return (
       <div className="dashboard-loading">
         <div className="spinner" />
-        <p>Loading dashboard...</p>
+        <p>Loading...</p>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="dashboard-error">
-        <p>{error}</p>
-        <button onClick={load} className="btn-retry">Retry</button>
-      </div>
-    );
-  }
-
-  const { kpis, activeTrips, vehicleStatus, recentCompletedTrips, expensesByCategory, monthlyRevenue, vehicleROI } = data;
-
-  const monthlyData = [...(monthlyRevenue || [])].reverse().map((m) => ({
-    name: new Date(m.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-    revenue: parseFloat(m.revenue),
-    trips: m.trip_count,
-  }));
-
-  return (
-    <div className="dashboard">
-      {/* KPI Row */}
-      <div className="kpi-grid">
-        <KpiCard title="Active Trips"        value={kpis.activeTrips}           icon="🗺️"  color="primary" />
-        <KpiCard title="Available Vehicles"  value={kpis.availableVehicles}     icon="🚚"  color="success" />
-        <KpiCard title="Vehicles In Shop"    value={kpis.vehiclesInShop}        icon="🔧"  color="warning" />
-        <KpiCard title="Total Revenue"       value={`$${fmt(kpis.totalRevenue)}`} icon="💰" color="success" />
-        <KpiCard title="Total Expenses"      value={`$${fmt(kpis.totalExpenses)}`} icon="📊" color="danger" />
-        <KpiCard title="Net Profit"          value={`$${fmt(kpis.netProfit)}`}  icon="📈"  color={kpis.netProfit >= 0 ? 'success' : 'danger'} />
-      </div>
-
-      {/* Licence / driver warnings */}
-      {(kpis.expiredLicences > 0 || kpis.expiringLicences > 0 || kpis.suspendedDrivers > 0) && (
-        <div className="dashboard-alerts">
-          {kpis.expiredLicences > 0 && (
-            <div className="dash-alert dash-alert-danger">
-              ⚠ <strong>{kpis.expiredLicences}</strong> driver{kpis.expiredLicences > 1 ? 's have' : ' has'} an <strong>expired licence</strong> — cannot be dispatched.
-            </div>
-          )}
-          {kpis.expiringLicences > 0 && (
-            <div className="dash-alert dash-alert-warning">
-              ⚡ <strong>{kpis.expiringLicences}</strong> driver licence{kpis.expiringLicences > 1 ? 's expire' : ' expires'} within 30 days — renewal required.
-            </div>
-          )}
-          {kpis.suspendedDrivers > 0 && (
-            <div className="dash-alert dash-alert-warning">
-              🚫 <strong>{kpis.suspendedDrivers}</strong> driver{kpis.suspendedDrivers > 1 ? 's are' : ' is'} currently <strong>suspended</strong>.
-            </div>
-          )}
+  // Route to role-specific dashboard
+  switch (user.role) {
+    case UserRoles.FLEET_MANAGER:
+      return <FleetManagerDashboard />;
+    case UserRoles.DRIVER:
+      return <DriverDashboard />;
+    case UserRoles.SAFETY_OFFICER:
+      return <SafetyOfficerDashboard />;
+    case UserRoles.FINANCIAL_ANALYST:
+      return <FinancialAnalystDashboard />;
+    default:
+      return (
+        <div className="dashboard-error">
+          <p>Invalid user role: {user.role}</p>
         </div>
-      )}
+      );
+  }
+};
 
-      <div className="dashboard-grid">
-        {/* Active Trips Table */}
-        <div className="dash-card wide">
+export default Dashboard;
           <h3 className="dash-card-title">Active Trips</h3>
           {activeTrips.length === 0 ? (
             <p className="dash-empty">No active trips</p>

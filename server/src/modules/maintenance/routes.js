@@ -8,18 +8,19 @@ import {
 } from './controller.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate, asyncHandler } from '../../middleware/validator.js';
-import { MAINTENANCE_WRITE_ROLES } from '../../utils/constants.js';
+import { MAINTENANCE_READ_ROLES, MAINTENANCE_WRITE_ROLES } from '../../utils/constants.js';
 
 const router = express.Router();
 
 /**
  * @route   GET /api/maintenance
  * @desc    Get all maintenance logs with optional filtering
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Safety Officer)
  */
 router.get(
   '/',
   authenticate,
+  authorize(...MAINTENANCE_READ_ROLES),
   [
     validateQuery('status').optional().trim(),
     validateQuery('vehicle_id').optional().isUUID(),
@@ -30,11 +31,12 @@ router.get(
 /**
  * @route   GET /api/maintenance/:id
  * @desc    Get maintenance log by ID
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Safety Officer)
  */
 router.get(
   '/:id',
   authenticate,
+  authorize(...MAINTENANCE_READ_ROLES),
   asyncHandler(getMaintenanceById)
 );
 

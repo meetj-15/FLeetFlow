@@ -1,7 +1,8 @@
 import { query } from '../../config/db.js';
 import { successResponse, createdResponse } from '../../utils/response.js';
-import { notFoundError } from '../../utils/errors.js';
+import { notFoundError, validationError } from '../../utils/errors.js';
 import { DriverStatus } from '../../utils/constants.js';
+import { validateDriver } from './driverValidation.js';
 
 /**
  * Get all drivers with optional filtering
@@ -103,6 +104,19 @@ export const createDriver = async (req, res, next) => {
       safety_score = 100,
     } = req.body;
 
+    // Validate driver data
+    const validation = validateDriver({
+      license_no,
+      license_category,
+      license_expiry,
+      safety_score
+    });
+
+    if (!validation.valid) {
+      const errorMessage = validation.errors.map(e => e.message).join(', ');
+      throw validationError(errorMessage, validation.errors);
+    }
+
     const result = await query(
       `INSERT INTO drivers (
         user_id, license_no, license_category, license_expiry,
@@ -149,6 +163,20 @@ export const updateDriver = async (req, res, next) => {
 
     if (existingDriver.rows.length === 0) {
       throw notFoundError('Driver');
+    }
+
+    // Validate driver data (only validate fields that are being updated)
+    const dataToValidate = {};
+    if (license_no !== undefined) dataToValidate.license_no = license_no;
+    if (license_category !== undefined) dataToValidate.license_category = license_category;
+    if (license_expiry !== undefined) dataToValidate.license_expiry = license_expiry;
+    if (safety_score !== undefined) dataToValidate.safety_score = safety_score;
+
+    const validation = validateDriver(dataToValidate);
+
+    if (!validation.valid) {
+      const errorMessage = validation.errors.map(e => e.message).join(', ');
+      throw validationError(errorMessage, validation.errors);
     }
 
     const result = await query(
