@@ -1,0 +1,21 @@
+.expiry-expired {
+  color: var(--danger-color);
+  font-weight: 600;
+}
+
+.expiry-soon {
+  color: var(--warning-color);
+  font-weight: 600;
+}
+
+.score {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.score-good { background: #d1fae5; color: #065f46; }
+.score-mid  { background: #fef3c7; color: #92400e; }
+.score-bad  { background: #fee2e2; color: #991b1b; }
