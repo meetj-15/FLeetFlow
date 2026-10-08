@@ -118,25 +118,13 @@ npm run install:all
 
 ### 3. Set Up Database
 
-```bash
-# Connect to PostgreSQL
-psql -U postgres
+Create the database — this is the **only manual DB step** required:
 
-# Create database
-CREATE DATABASE fleetflow;
-
-# Connect to database
-\c fleetflow
-
-# Run schema
-\i database/schema.sql
-
-# Optional: Load seed data
-\i database/seed.sql
-
-# Exit
-\q
+```powershell
+psql -U postgres -c "CREATE DATABASE fleetflow;"
 ```
+
+The schema and seed data are created automatically when the server starts.
 
 ## ⚙️ Configuration
 
@@ -327,6 +315,68 @@ npm test
 | mike@fleetflow.com | password123 | Driver |
 | safety@fleetflow.com | password123 | Safety Officer |
 | finance@fleetflow.com | password123 | Financial Analyst |
+
+### Role Access Summary
+
+| Module | Fleet Manager | Driver | Safety Officer | Financial Analyst |
+|--------|:---:|:---:|:---:|:---:|
+| Dashboard | ✅ | ✅ | ✅ | ✅ |
+| Vehicles | ✅ | ❌ | ❌ | ❌ |
+| Drivers | ✅ | ❌ | ✅ | ❌ |
+| Trips | ✅ | ✅ | ❌ | ❌ |
+| Maintenance | ✅ | ❌ | ✅ | ❌ |
+| Fuel | ✅ | ✅ | ❌ | ❌ |
+| Expenses | ✅ | ❌ | ❌ | ✅ |
+
+### Dashboard Content per Role
+
+| Role | Dashboard Shows |
+|------|----------------|
+| Fleet Manager | Active trips, available vehicles, vehicles in shop, available drivers, compliance alerts |
+| Driver | Personal trips count, completed trips, personal revenue, own active/completed trip lists |
+| Safety Officer | Driver compliance KPIs, licence status chart, licence alerts, safety scores, active maintenance |
+| Financial Analyst | Revenue/expenses/profit KPIs, expense breakdown by category, vehicle profitability, recent expenses |
+
+## 🐛 Troubleshooting
+
+### "Cannot connect to database"
+```powershell
+# Check PostgreSQL is running
+Get-Service postgresql*
+
+# If not running, start it (adjust version number)
+Start-Service postgresql-x64-15
+
+# Verify database exists
+psql -U postgres -c "\l"
+```
+
+### "Port 3000 already in use"
+```powershell
+# Find and kill the process
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+```
+
+### "Module not found" errors
+```powershell
+Remove-Item -Recurse -Force node_modules, client/node_modules, server/node_modules
+npm run install:all
+```
+
+### Charts not showing
+```powershell
+cd client
+npm install recharts
+```
+
+### Login page not appearing (opening URL logs in automatically)
+This happens when a previous session's JWT token is still in the browser's `localStorage`. Clear it with:
+```javascript
+// Open browser DevTools console and run:
+localStorage.clear()
+```
+Then refresh the page.
 
 ## 🚢 Deployment
 

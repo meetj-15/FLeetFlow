@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import app from './app.js';
 import { testConnection } from './config/db.js';
+import { initDatabase } from './config/initDb.js';
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +22,9 @@ const startServer = async () => {
       console.error('Please check your DATABASE_URL environment variable');
       process.exit(1);
     }
+
+    // Auto-create schema and seed demo data (idempotent — safe to run every start)
+    await initDatabase();
 
     // Start Express server
     app.listen(PORT, () => {

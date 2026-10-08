@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import './AppErrorBoundary.css';
 
 /**
@@ -69,9 +68,9 @@ class AppErrorBoundary extends React.Component {
               >
                 Try Again
               </button>
-              <Link to="/" className="btn-home">
+              <a href="/" className="btn-home">
                 Go to Dashboard
-              </Link>
+              </a>
               <button 
                 onClick={() => window.location.reload()} 
                 className="btn-reload"

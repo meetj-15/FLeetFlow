@@ -14,7 +14,8 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Read from sessionStorage — clears automatically when tab is closed
+    const token = sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,8 +33,7 @@ api.interceptors.response.use(
     if (error.response) {
       // Handle 401 Unauthorized - token expired or invalid
       if (error.response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        sessionStorage.clear();
         window.location.href = '/login';
       }
       
