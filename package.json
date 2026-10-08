@@ -1,0 +1,19 @@
+{
+  "name": "fleetflow",
+  "version": "1.0.0",
+  "description": "Transport Operations Management System",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "build": "cd client && npm run build",
+    "test": "cd server && npm test"
+  },
+  "keywords": ["fleet", "transport", "management"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

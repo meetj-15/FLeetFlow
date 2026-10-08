@@ -22,9 +22,6 @@ npm-debug.log*
 .idea/
 *.swp
 *.swo
-package-lock.json
-package.json
-
 
 # OS
 .DS_Store
@@ -32,3 +29,16 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Kiro AI assistant internals — never commit these
+.kiro/
+.agents/
+
+# Lab submission PDFs — local only, not part of the codebase
+*.pdf
+
+# Project spec / vibe-coding AI context file
+context.md
+
+# Setup script — local utility only
+verify-setup.ps1
