@@ -30,6 +30,10 @@ Thumbs.db
 # Test coverage
 coverage/
 
+# Package lock files — each dev installs fresh
+package-lock.json
+package.json
+
 # Kiro AI assistant internals — never commit these
 .kiro/
 .agents/
