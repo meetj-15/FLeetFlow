@@ -156,3 +156,101 @@ input, select, textarea {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* ============================================================
+   Shared page layout utilities (used across all page modules)
+   ============================================================ */
+
+.page-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.toolbar {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--bg-primary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--bg-primary);
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.page-error {
+  padding: var(--spacing-md);
+  background: #fee2e2;
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-md);
+  color: var(--danger-color);
+  font-size: 0.875rem;
+}
+
+.sub-text {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.action-btns {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.form-banner-error {
+  padding: var(--spacing-md);
+  background: #fee2e2;
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-md);
+  color: var(--danger-color);
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}

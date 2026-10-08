@@ -22,6 +22,7 @@ router.get(
   [
     validateQuery('vehicle_id').optional().isUUID(),
     validateQuery('trip_id').optional().isUUID(),
+    validate,
   ],
   asyncHandler(getAllFuelLogs)
 );

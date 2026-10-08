@@ -199,18 +199,21 @@ export const dispatchTrip = async (req, res, next) => {
 
     const vehicle = vehicleResult.rows[0];
 
-    // Validate vehicle availability
+    // Validate vehicle availability (catches On Trip, In Shop, Retired)
     if (vehicle.status !== VehicleStatus.AVAILABLE) {
-      throw businessRuleError(
-        ErrorCodes.VEHICLE_UNAVAILABLE,
-        `Vehicle is not available. Current status: ${vehicle.status}`
-      );
+      const reason =
+        vehicle.status === VehicleStatus.RETIRED  ? 'Vehicle has been retired' :
+        vehicle.status === VehicleStatus.ON_TRIP  ? 'Vehicle is already on a trip' :
+        vehicle.status === VehicleStatus.IN_SHOP  ? 'Vehicle is currently in the workshop' :
+        `Vehicle is not available (status: ${vehicle.status})`;
+      throw businessRuleError(ErrorCodes.VEHICLE_UNAVAILABLE, reason);
     }
 
-    if (vehicle.status === VehicleStatus.RETIRED) {
+    // Re-validate cargo weight in case vehicle capacity changed since trip creation
+    if (parseFloat(trip.cargo_weight) > parseFloat(vehicle.max_load_capacity)) {
       throw businessRuleError(
-        ErrorCodes.VEHICLE_UNAVAILABLE,
-        'Cannot dispatch a retired vehicle'
+        ErrorCodes.CARGO_EXCEEDS_CAPACITY,
+        `Cargo weight (${trip.cargo_weight}t) exceeds vehicle capacity (${vehicle.max_load_capacity}t)`
       );
     }
 
@@ -226,19 +229,13 @@ export const dispatchTrip = async (req, res, next) => {
 
     const driver = driverResult.rows[0];
 
-    // Validate driver availability
+    // Validate driver availability (catches On Trip and Suspended)
     if (driver.status !== DriverStatus.AVAILABLE) {
-      throw businessRuleError(
-        ErrorCodes.DRIVER_UNAVAILABLE,
-        `Driver is not available. Current status: ${driver.status}`
-      );
-    }
-
-    if (driver.status === DriverStatus.SUSPENDED) {
-      throw businessRuleError(
-        ErrorCodes.DRIVER_SUSPENDED,
-        'Cannot dispatch a suspended driver'
-      );
+      const reason =
+        driver.status === DriverStatus.SUSPENDED ? 'Driver is suspended and cannot be dispatched' :
+        driver.status === DriverStatus.ON_TRIP   ? 'Driver is already on another trip' :
+        `Driver is not available (status: ${driver.status})`;
+      throw businessRuleError(ErrorCodes.DRIVER_UNAVAILABLE, reason);
     }
 
     // Validate license expiry

@@ -105,7 +105,15 @@ export const openMaintenance = async (req, res, next) => {
     if (vehicle.status === VehicleStatus.ON_TRIP) {
       throw businessRuleError(
         ErrorCodes.VEHICLE_ON_TRIP,
-        'Cannot open maintenance for vehicle that is on a trip'
+        'Cannot open maintenance for a vehicle that is currently on a trip'
+      );
+    }
+
+    // Business rule: Cannot open maintenance for vehicle already in shop
+    if (vehicle.status === VehicleStatus.IN_SHOP) {
+      throw businessRuleError(
+        ErrorCodes.INVALID_STATUS,
+        'Vehicle is already in the workshop. Close the existing maintenance record first.'
       );
     }
 

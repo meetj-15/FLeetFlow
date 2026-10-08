@@ -13,6 +13,9 @@ const FormField = ({
   options,
   disabled = false,
   rows = 3,
+  min,
+  max,
+  step,
 }) => {
   const renderInput = () => {
     if (type === 'select') {
@@ -59,6 +62,9 @@ const FormField = ({
         required={required}
         placeholder={placeholder}
         disabled={disabled}
+        min={min}
+        max={max}
+        step={step}
         className={error ? 'error' : ''}
       />
     );

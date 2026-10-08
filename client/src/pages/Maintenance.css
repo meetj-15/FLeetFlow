@@ -1,0 +1,25 @@
+.desc-cell {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+.close-info {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.page-toast {
+  padding: var(--spacing-md);
+  background: #d1fae5;
+  border: 1px solid var(--success-color);
+  border-radius: var(--radius-md);
+  color: #065f46;
+  font-size: 0.875rem;
+  font-weight: 500;
+}

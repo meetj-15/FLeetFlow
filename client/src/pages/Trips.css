@@ -1,0 +1,46 @@
+.confirm-msg {
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  line-height: 1.6;
+}
+
+.warn-text {
+  color: var(--warning-color);
+  font-weight: 500;
+}
+
+.trip-detail {
+  padding: var(--spacing-sm) 0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.detail-value.revenue {
+  color: var(--success-color);
+  font-weight: 700;
+}

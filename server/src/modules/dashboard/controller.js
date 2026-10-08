@@ -1,6 +1,6 @@
 import { query } from '../../config/db.js';
 import { successResponse } from '../../utils/response.js';
-import { TripStatus, VehicleStatus } from '../../utils/constants.js';
+import { TripStatus, VehicleStatus, DriverStatus } from '../../utils/constants.js';
 
 /**
  * Get dashboard metrics and KPIs
@@ -27,6 +27,28 @@ export const getDashboardMetrics = async (req, res, next) => {
       [VehicleStatus.IN_SHOP]
     );
     const vehiclesInShop = parseInt(inShopVehiclesResult.rows[0].count);
+
+    // Suspended drivers count
+    const suspendedDriversResult = await query(
+      `SELECT COUNT(*) as count FROM drivers WHERE status = $1`,
+      [DriverStatus.SUSPENDED]
+    );
+    const suspendedDrivers = parseInt(suspendedDriversResult.rows[0].count);
+
+    // Drivers with licence expiring within 30 days (not yet expired)
+    const expiringLicencesResult = await query(
+      `SELECT COUNT(*) as count FROM drivers
+       WHERE license_expiry > CURRENT_DATE
+         AND license_expiry <= CURRENT_DATE + INTERVAL '30 days'`
+    );
+    const expiringLicences = parseInt(expiringLicencesResult.rows[0].count);
+
+    // Drivers with already-expired licences
+    const expiredLicencesResult = await query(
+      `SELECT COUNT(*) as count FROM drivers
+       WHERE license_expiry <= CURRENT_DATE`
+    );
+    const expiredLicences = parseInt(expiredLicencesResult.rows[0].count);
 
     // Completed trips revenue
     const revenueResult = await query(
@@ -177,6 +199,9 @@ export const getDashboardMetrics = async (req, res, next) => {
         totalRevenue,
         totalExpenses,
         netProfit,
+        suspendedDrivers,
+        expiringLicences,
+        expiredLicences,
       },
       activeTrips: activeTripsListResult.rows,
       vehicleStatus: vehicleStatusResult.rows.map(v => ({
