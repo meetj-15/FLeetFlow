@@ -10,18 +10,19 @@ import {
 } from './controller.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate, asyncHandler } from '../../middleware/validator.js';
-import { TRIP_WRITE_ROLES } from '../../utils/constants.js';
+import { TRIP_READ_ROLES, TRIP_WRITE_ROLES } from '../../utils/constants.js';
 
 const router = express.Router();
 
 /**
  * @route   GET /api/trips
  * @desc    Get all trips with optional filtering
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Driver)
  */
 router.get(
   '/',
   authenticate,
+  authorize(...TRIP_READ_ROLES),
   [
     validateQuery('status').optional().trim(),
     validateQuery('vehicle_id').optional().isUUID(),
@@ -33,11 +34,12 @@ router.get(
 /**
  * @route   GET /api/trips/:id
  * @desc    Get trip by ID
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Driver)
  */
 router.get(
   '/:id',
   authenticate,
+  authorize(...TRIP_READ_ROLES),
   asyncHandler(getTripById)
 );
 

@@ -1,6 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api, { handleApiError } from '../services/api';
 
+// ---------------------------------------------------------------------------
+// Storage helpers — sessionStorage so credentials are cleared when the
+// browser tab is closed (unlike localStorage which persists forever).
+// ---------------------------------------------------------------------------
+const storage = {
+  get: (key) => sessionStorage.getItem(key),
+  set: (key, val) => sessionStorage.setItem(key, val),
+  remove: (key) => sessionStorage.removeItem(key),
+  clear: () => sessionStorage.clear(),
+};
+
+// Also wipe any leftover localStorage tokens from old builds so they can't
+// silently re-hydrate a session.
+localStorage.removeItem('token');
+localStorage.removeItem('user');
+
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -16,28 +32,31 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Check if user is logged in on mount
+  // On mount: if a sessionStorage token exists verify it with the backend.
+  // sessionStorage is wiped when the tab closes, so re-opening the URL
+  // always starts unauthenticated.
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      const savedUser = localStorage.getItem('user');
-      
-      if (token && savedUser) {
+      const token = storage.get('token');
+
+      if (token) {
         try {
-          setUser(JSON.parse(savedUser));
-          // Optionally verify token with backend
           const response = await api.get('/auth/me');
           if (response.data.success) {
             setUser(response.data.data.user);
-            localStorage.setItem('user', JSON.stringify(response.data.data.user));
+          } else {
+            storage.clear();
+            setUser(null);
           }
-        } catch (err) {
-          console.error('Auth check failed:', err);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+        } catch {
+          // Token expired or server rejected it — force re-login
+          storage.clear();
           setUser(null);
         }
+      } else {
+        setUser(null);
       }
+
       setLoading(false);
     };
 
@@ -48,11 +67,11 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await api.post('/auth/login', { email, password });
-      
+
       if (response.data.success) {
         const { user, token } = response.data.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        storage.set('token', token);
+        storage.set('user', JSON.stringify(user));
         setUser(user);
         return { success: true };
       }
@@ -66,17 +85,17 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password, role) => {
     try {
       setError(null);
-      const response = await api.post('/auth/register', { 
-        name, 
-        email, 
-        password, 
-        role 
+      const response = await api.post('/auth/register', {
+        name,
+        email,
+        password,
+        role,
       });
-      
+
       if (response.data.success) {
         const { user, token } = response.data.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        storage.set('token', token);
+        storage.set('user', JSON.stringify(user));
         setUser(user);
         return { success: true };
       }
@@ -88,8 +107,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    storage.clear();
     setUser(null);
     window.location.href = '/login';
   };

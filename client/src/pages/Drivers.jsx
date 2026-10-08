@@ -28,6 +28,25 @@ const isExpiringSoon = (dateStr) => {
   return diff > 0 && diff <= 30;
 };
 
+const getLicenseStatus = (expiryDate) => {
+  if (!expiryDate) return { label: 'Unknown', variant: 'default' };
+  const expiry = new Date(expiryDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  expiry.setHours(0, 0, 0, 0);
+  
+  if (expiry < today) {
+    return { label: 'Expired', variant: 'danger' };
+  }
+  
+  const daysUntilExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+  if (daysUntilExpiry <= 30) {
+    return { label: 'Expiring Soon', variant: 'warning' };
+  }
+  
+  return { label: 'Valid', variant: 'success' };
+};
+
 const Drivers = () => {
   const { hasRole } = useAuth();
   const canEdit = hasRole([UserRoles.FLEET_MANAGER, UserRoles.SAFETY_OFFICER]);
@@ -144,9 +163,13 @@ const Drivers = () => {
       render: (r) => {
         const d = r.license_expiry?.split('T')[0];
         if (!d) return '—';
-        if (isExpired(d)) return <span className="expiry-expired">⚠ {d}</span>;
-        if (isExpiringSoon(d)) return <span className="expiry-soon">⚡ {d}</span>;
-        return d;
+        const status = getLicenseStatus(d);
+        return (
+          <div>
+            <div>{d}</div>
+            <StatusBadge status={status.label} variant={status.variant} />
+          </div>
+        );
       },
     },
     { header: 'Phone', accessor: 'phone', render: (r) => r.phone || '—' },

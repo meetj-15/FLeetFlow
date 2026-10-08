@@ -7,18 +7,19 @@ import {
 } from './controller.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate, asyncHandler } from '../../middleware/validator.js';
-import { FUEL_WRITE_ROLES } from '../../utils/constants.js';
+import { FUEL_READ_ROLES, FUEL_WRITE_ROLES } from '../../utils/constants.js';
 
 const router = express.Router();
 
 /**
  * @route   GET /api/fuel
  * @desc    Get all fuel logs with optional filtering
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Driver)
  */
 router.get(
   '/',
   authenticate,
+  authorize(...FUEL_READ_ROLES),
   [
     validateQuery('vehicle_id').optional().isUUID(),
     validateQuery('trip_id').optional().isUUID(),
@@ -30,11 +31,12 @@ router.get(
 /**
  * @route   GET /api/fuel/:id
  * @desc    Get fuel log by ID
- * @access  Private (Authenticated)
+ * @access  Private (Fleet Manager, Driver)
  */
 router.get(
   '/:id',
   authenticate,
+  authorize(...FUEL_READ_ROLES),
   asyncHandler(getFuelLogById)
 );
 

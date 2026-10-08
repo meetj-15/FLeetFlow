@@ -7,6 +7,7 @@ import { UserRoles } from './utils/constants';
 
 // Layout
 import AppLayout from './components/AppLayout';
+import AppErrorBoundary from './components/AppErrorBoundary';
 
 // Public Pages
 import Login from './pages/Login';
@@ -26,9 +27,10 @@ const { FLEET_MANAGER, DRIVER, SAFETY_OFFICER, FINANCIAL_ANALYST } = UserRoles;
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+    <AppErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/forbidden" element={<Forbidden />} />
@@ -92,6 +94,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </AppErrorBoundary>
   );
 }
 
